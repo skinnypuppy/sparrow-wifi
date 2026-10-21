@@ -31,11 +31,12 @@ if HAS_QTCHART:
     CHART_BACKEND = 'qtchart'
 
 elif HAS_PYQTGRAPH:
-    # pyqtgraph emulation of the QChart API subset that sparrow-wifi uses
+    # pyqtgraph emulation of the QChart API subset that sparrow-wifi uses.
+    # Widget classes come from the sparrowqt shim so this works under both
+    # PyQt5 and PyQt6.
     import pyqtgraph as pg
-    from PyQt6.QtWidgets import QWidget, QVBoxLayout
-    from PyQt6.QtCore import QTimer, QPointF
-    from PyQt6.QtGui import QBrush, QColor, QFont, QPainter
+    from sparrowqt import QWidget, QVBoxLayout, QTimer, QPointF, QRectF
+    from sparrowqt import QBrush, QColor, QFont
 
     CHART_BACKEND = 'pyqtgraph'
 
@@ -106,10 +107,25 @@ elif HAS_PYQTGRAPH:
                 self._points.append((float(args[0]), float(args[1])))
 
         def replace(self, *args):
-            self.clear()
-            if len(args) == 1 and isinstance(args[0], list):
+            """QLineSeries.replace overloads:
+               replace(QList[QPointF]) / replace(points-list)
+               replace(index, newX, newY)   - replace point at index
+               replace(oldX, oldY, newX, newY) - find point, replace it
+            """
+            if len(args) == 1 and isinstance(args[0], (list, tuple)):
+                self._points = []
                 for pt in args[0]:
                     self.append(pt)
+            elif len(args) == 3 and all(isinstance(a, (int, float)) for a in args):
+                index, newx, newy = args
+                if 0 <= index < len(self._points):
+                    self._points[index] = (float(newx), float(newy))
+            elif len(args) == 4:
+                oldx, oldy, newx, newy = args
+                target = (float(oldx), float(oldy))
+                if target in self._points:
+                    idx = self._points.index(target)
+                    self._points[idx] = (float(newx), float(newy))
 
         def clear(self):
             self._points = []
@@ -121,10 +137,12 @@ elif HAS_PYQTGRAPH:
             return self._pen
 
         def pointsVector(self):
-            return self._points
+            # QLineSeries returns QPointF objects; callers use .x()/.y()
+            return [QPointF(x, y) for (x, y) in self._points]
 
         def at(self, i):
-            return self._points[i]
+            x, y = self._points[i]
+            return QPointF(x, y)
 
         def count(self):
             return len(self._points)
@@ -231,7 +249,6 @@ elif HAS_PYQTGRAPH:
             return QPointF(0, 0)
 
         def plotArea(self):
-            from PyQt6.QtCore import QRectF
             if self._plotWidget:
                 r = self._plotWidget.geometry()
                 return QRectF(r.x(), r.y(), r.width(), r.height())
