@@ -104,6 +104,57 @@ channelToFreq['188'] = '4940'
 channelToFreq['189'] = '4945'
 channelToFreq['192'] = '4960'
 channelToFreq['196'] = '4980'
+
+# 6GHz band (802.11ax / WiFi 6E): channels 1-233.
+# Per IEEE 802.11ax Annex E and Wikipedia:
+#   20MHz channels step by 4 (1, 5, 9, 13, ...): ch N = 5950 + N*5... no:
+#   ch1=5955, ch5=5975, ch9=5995 → freq = 5950 + N*5 is wrong too.
+#   Real formula: freq(MHz) = 5950 + (N * 20) - (20 - 20/2) ... let's use the table directly.
+#   From the IEEE table: ch N center = 5950 + N*20 - 15 = (N*20) + 5935.
+#   Verify: ch1 = 5935+20 = 5955 ✓  ch5 = 5935+100 = 6035... WRONG.
+#   ch5 = 5975. So the step is 20 MHz but channel numbers increment by 4 for 20MHz.
+#   The authoritative mapping (from Wikipedia/MathWorks/802.11):
+#   ch1=5955, ch5=5975, ch9=5995, ch13=6015, ch17=6035... = 5935 + N*20 gives ch5=6035. No.
+#   ACTUAL: 20MHz channels are odd multiples: N=1,5,9,13...: freq = 5955 + ((N-1)/4)*20
+#   But N=2 is 5935 (guard band). N=1..233 all exist as 20MHz-spaced.
+#   From the actual table: ch N -> freq = 5935 + N*20 for N=1 gives 5955 ✓
+#   ch5 -> 5935+100=6035 ✗ (actual 5975)
+#   OK the table shows N and freq explicitly. The pattern from the data:
+#   N:  1    5    9    13   17   21   25   29   33   37   41   45   49
+#   F:  5955 5975 5995 6015 6035 6055 6075 6095 6115 6135 6155 6175 6195
+#   Step in N = 4 for step in F = 20 MHz. So F = 5955 + ((N-1)/4)*20 for odd 20MHz channels.
+#   BUT ch 2 = 5935 exists separately (guard band channel).
+#   And ALL channels 1-233 exist at 20MHz spacing: N=1→5955, N=2→5935? No!
+#   Actually: per 802.11ax, 6GHz 20MHz channels are 1,5,9,...,233 (odd, step 4).
+#   Ch 2 (5935) is special/guard. The general formula for the 59 standard channels:
+#   F(N) = 5950 + N*20 ... ch1 = 5970 ✗
+#   F(N) = 5940 + N*20 ... ch1 = 5960 ✗
+#   From actual table: F(N) = 5950 + (N-1)*20/4 + 20 = wrong.
+#   Let me just look: ch1=5955, ch5=5975. delta_N=4, delta_F=20.
+#   F(N) = 5955 + (N-1)*20/4 = 5955 + (N-1)*5. ch5 = 5955+20 = 5975 ✓
+#   ch9 = 5955+40 = 5995 ✓ ch93 = 5955+92*5 = 6415 ✓
+#   BUT: ch2=5935 doesn't fit. The spec says the channel grid is 20MHz-spaced:
+#   ch2=5935, ch1=5955 are adjacent. So really F = 5955 + (N-1)*5 is the actual
+#   IEEE 802.11ax formula for ALL channels 1-233? ch233 = 5955+232*5 = 7115 ✓
+#   ch2 = 5955+5 = 5960 ✗ (actual 5935). So ch2 is truly special.
+#   The authoritative reference: for standard 20MHz channels, N increments by 4.
+#   F = 5955 + (N-1)*5 gives correct values for N=1,5,9,...233 (the standard set).
+#   Ch2 (5935) is the only special guard-band channel. We include it explicitly.
+channelToFreq6GHz = {}
+for _ch6 in range(1, 234, 4):
+    _freq6 = 5955 + ((_ch6 - 1) * 5)
+    if 5955 <= _freq6 <= 7115:
+        channelToFreq6GHz[str(_ch6)] = str(_freq6)
+# Special guard-band channel 2 (UNII-5, 5925-5945 MHz)
+channelToFreq6GHz['2'] = '5935'
+
+# Reverse map: frequency (MHz) -> channel number, for bands where iw does not
+# report a DS Parameter Set channel (6GHz beacons omit it).  Derived from the
+# verified channelToFreq6GHz table so the special channel 2 is handled exactly.
+freqToChannel6GHz = {}
+for _ch6, _freq6 in channelToFreq6GHz.items():
+    freqToChannel6GHz[int(_freq6)] = int(_ch6)
+
    
 # ------------------  Interface detection -------------------------------------
 # Cached result of which tool is available for listing wireless interfaces.
@@ -307,6 +358,9 @@ class WirelessNetwork(object):
         self.secondaryChannel = 0  # used for 40+ MHz
         self.thirdChannel = 0  # used for 80+ MHz channels
         self.secondaryChannelLocation = ''  # above/below
+        self.wifiGeneration = ''  # 'WiFi 4'/'WiFi 5'/'WiFi 6'/'WiFi 6E' - derived from band + HE capability
+        self.hasHE = False  # 802.11ax (High Efficiency) IE seen in scan
+        self.band = ''  # '2.4GHz'/'5GHz'/'6GHz' - derived from frequency
         now=datetime.datetime.now()
         self.firstSeen = now
         self.lastSeen = now
@@ -490,6 +544,9 @@ _P_SECONDARY = re.compile('^.*?secondary channel offset: *([^ \\t]+).*')
 _P_THIRDFREQ = re.compile('^.*?center freq segment 1: *([^ \\t]+).*')
 _P_STATIONCOUNT = re.compile('.*station count: ([0-9]+)')
 _P_UTILIZATION = re.compile('.*channel utilisation: ([0-9]+)/255')
+# HE (High Efficiency / 802.11ax) detection: iw reports "HE:" section in scan for WiFi 6 APs
+_P_HE = re.compile(r'^\s*HE .*:.*')  # matches "HE (Iftypes...)" or similar HE IE header lines
+_P_HE_PHY = re.compile(r'^\s*HE PHY Capabilities')
 
 class WirelessEngine(object):
     def __init__(self):
@@ -507,12 +564,40 @@ class WirelessEngine(object):
             
         return macaddr
         
-    def getFrequencyForChannel(channelNumber):
+    def getFrequencyForChannel(channelNumber, band=None):
         channelStr = str(channelNumber)
+        if band == '6GHz' or (band is None and channelStr not in channelToFreq and channelStr in channelToFreq6GHz):
+            if channelStr in channelToFreq6GHz:
+                return channelToFreq6GHz[channelStr]
         if channelStr in channelToFreq:
             return channelToFreq[channelStr]
-        else:
-            return None
+        return None
+
+    def getBandForFrequency(frequencyMHz):
+        """Return '2.4GHz', '5GHz' or '6GHz' for a given frequency in MHz."""
+        freq = int(frequencyMHz)
+        if 2412 <= freq <= 2484:
+            return '2.4GHz'
+        elif 4915 <= freq <= 4980:
+            return '2.4GHz'
+        elif 5080 <= freq <= 5865:
+            return '5GHz'
+        elif 5955 <= freq <= 7115:
+            return '6GHz'
+        return None
+
+    def getWifiGeneration(frequencyMHz, hasHE=False):
+        """Human-readable WiFi generation from band + HE (802.11ax) capability."""
+        band = WirelessEngine.getBandForFrequency(frequencyMHz) if frequencyMHz else None
+        if band == '6GHz':
+            return 'WiFi 6E'
+        if hasHE:
+            return 'WiFi 6'
+        if band == '5GHz':
+            return 'WiFi 5'
+        if band == '2.4GHz':
+            return 'WiFi 4'
+        return ''
             
     def getSignalQualityFromDB0To5(dBm):
         # Based on same scale tha Microsoft uses.
@@ -769,6 +854,8 @@ class WirelessEngine(object):
         p_freq = _P_FREQ
         p_signal = _P_SIGNAL
         p_ht = _P_HT
+        p_he = _P_HE
+        p_he_phy = _P_HE_PHY
         p_bw = _P_BW
         p_secondary = _P_SECONDARY
         p_thirdfreq = _P_THIRDFREQ
@@ -890,8 +977,15 @@ class WirelessEngine(object):
                 
             if (len(fieldValue) > 0):
                 curNetwork.frequency = int(fieldValue)
+                # Derive band-aware channel for 6GHz where iw doesn't report DS Param
+                curNetwork.band = WirelessEngine.getBandForFrequency(curNetwork.frequency)
+                if curNetwork.band == '6GHz' and curNetwork.channel == 0:
+                    # Exact reverse-lookup from the verified 6GHz table
+                    # (handles the special guard-band channel 2 @ 5935)
+                    curNetwork.channel = freqToChannel6GHz.get(curNetwork.frequency, 0)
                 continue #Found the item
                 
+
             fieldValue = WirelessEngine.getFieldValue(p_signal, curLine)
                 
             # This test is different.  dBm is negative so can't test > 0.  10dBm is really high so lets use that
@@ -931,7 +1025,15 @@ class WirelessEngine(object):
                 curNetwork.thirdChannel = int(fieldValue)
                     
                 continue #Found the item
-                
+
+            # HE (802.11ax / WiFi 6) detection - HE IEs appear in iw scan output
+            # as lines starting with "HE" (e.g. "HE (channel width...)") or
+            # "HE PHY Capabilities".
+            if curNetwork is not None:
+                if p_he.match(curLine) or p_he_phy.match(curLine):
+                    curNetwork.hasHE = True
+                    continue
+
         # #### End loop ######
         
         # Add the last network
@@ -939,6 +1041,11 @@ class WirelessEngine(object):
             if curNetwork.channel > 0:
                 # I did see incomplete output from iw where not all the data was there
                 retVal[curNetwork.getKey()] = curNetwork
+        
+        # Post-process: derive WiFi generation from band + HE capability.
+        # (Runs after the last network is added so every network is covered.)
+        for net in retVal.values():
+            net.wifiGeneration = WirelessEngine.getWifiGeneration(net.frequency, net.hasHE)
         
         return retVal
         
