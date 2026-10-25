@@ -145,7 +145,7 @@ Synthetic test alerts emitted by the **Send Test Message** button use `rule.cate
 
 | Requirement | Sparrow-WiFi (GUI) | Sparrow DroneID (Web) |
 |-------------|-------------------|----------------------|
-| **OS** | Ubuntu 20.04+, Kali 2020.3+, Debian 11+, Gentoo/Pentoo | Ubuntu 20.04+, Kali, Debian 11+, Raspberry Pi OS |
+| **OS** | Ubuntu 20.04+, Kali 2020.3+, Debian 11+, Gentoo/Pentoo, BlackArch | Ubuntu 20.04+, Kali, Debian 11+, Raspberry Pi OS |
 | **Python** | 3.8+ | 3.8+ |
 | **Qt binding** | PyQt5 **or** PyQt6 (see charting note below) | n/a |
 | **Root** | Required (iw scan) | Required (monitor mode, BLE) |
@@ -177,6 +177,8 @@ sudo apt install python3-pip python3-pyqt5 python3-pyqt5.qtchart \
 > **Gentoo / Pentoo users:** `emerge --ask dev-python/pyqt6 dev-python/pyqtgraph dev-python/numpy dev-python/python-dateutil dev-python/requests`; the remaining Python deps (`gps3`, `manuf`) are optional at runtime &mdash; GPS telemetry and OUI vendor lookups degrade gracefully when they are absent.
 
 > **Kali users:** PyQt5, PyQtChart, and aircrack-ng (for the Falcon plugin) are typically pre-installed. You'll mostly just need `gpsd`, `gpsd-clients`, and the Python deps below.
+
+> **BlackArch users (and any distro via venv):** the Qt5/Qt6 dual-compatibility and 6 GHz support were verified end-to-end on BlackArch via the virtualenv install in Option B below (PyQt5 5.15 + QtChart, and separately on the pyqtgraph fallback path), on mixed WiFi 6/7 hardware. The venv route works on any Linux distribution regardless of which Qt bindings the distro packages.
 
 Python dependencies &mdash; choose either approach:
 
