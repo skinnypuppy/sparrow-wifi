@@ -43,9 +43,17 @@ for n in ('QAction', 'QRegularExpression', 'QSortFilterProxyModel', 'QDesktopWid
 try:
     import sparrowchart
     print('   CHART_BACKEND =', sparrowchart.CHART_BACKEND)
+    check('sparrowchart imports (a chart backend is required by the GUI)', True)
 except ImportError as e:
     sparrowchart = None
     print('   (no chart backend installed: ' + str(e) + ')')
+    check('sparrowchart imports (a chart backend is required by the GUI)', False, str(e))
+
+if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'qtchart':
+    expected = 'PyQt5.QtChart' if sparrowqt.QT_VERSION == 5 else 'PyQt6.QtCharts'
+    check('qtchart backend binding matches shim binding (QT_VERSION %d)' % sparrowqt.QT_VERSION,
+          sparrowchart.SparrowChart.__module__ == expected,
+          'SparrowChart came from %r' % sparrowchart.SparrowChart.__module__)
 
 if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'pyqtgraph':
     from sparrowqt import QPointF

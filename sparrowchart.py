@@ -11,11 +11,14 @@ Usage in application code is unchanged:
     from sparrowchart import SparrowChart, SparrowChartView, SparrowLineSeries, SparrowValueAxis
 """
 
-from sparrowqt import HAS_QTCHART, HAS_PYQTGRAPH, Qt
+from sparrowqt import HAS_QTCHART, HAS_PYQTGRAPH, QT_VERSION, Qt
 
 if HAS_QTCHART:
-    # Real QtChart available - use it directly
-    if hasattr(Qt, 'AlignmentFlag'):
+    # Real QtChart available - use it directly. QT_VERSION (computed in
+    # sparrowqt from which binding actually imported) is the only reliable
+    # discriminator: PyQt5 >= 5.15 also exposes scoped enums such as
+    # Qt.AlignmentFlag, so a hasattr probe cannot distinguish the bindings.
+    if QT_VERSION == 6:
         # Qt6 path
         from PyQt6.QtCharts import (QChart, QChartView, QLineSeries,
                                     QValueAxis, QSplineSeries)
