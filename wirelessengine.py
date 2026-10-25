@@ -105,41 +105,10 @@ channelToFreq['189'] = '4945'
 channelToFreq['192'] = '4960'
 channelToFreq['196'] = '4980'
 
-# 6GHz band (802.11ax / WiFi 6E): channels 1-233.
-# Per IEEE 802.11ax Annex E and Wikipedia:
-#   20MHz channels step by 4 (1, 5, 9, 13, ...): ch N = 5950 + N*5... no:
-#   ch1=5955, ch5=5975, ch9=5995 → freq = 5950 + N*5 is wrong too.
-#   Real formula: freq(MHz) = 5950 + (N * 20) - (20 - 20/2) ... let's use the table directly.
-#   From the IEEE table: ch N center = 5950 + N*20 - 15 = (N*20) + 5935.
-#   Verify: ch1 = 5935+20 = 5955 ✓  ch5 = 5935+100 = 6035... WRONG.
-#   ch5 = 5975. So the step is 20 MHz but channel numbers increment by 4 for 20MHz.
-#   The authoritative mapping (from Wikipedia/MathWorks/802.11):
-#   ch1=5955, ch5=5975, ch9=5995, ch13=6015, ch17=6035... = 5935 + N*20 gives ch5=6035. No.
-#   ACTUAL: 20MHz channels are odd multiples: N=1,5,9,13...: freq = 5955 + ((N-1)/4)*20
-#   But N=2 is 5935 (guard band). N=1..233 all exist as 20MHz-spaced.
-#   From the actual table: ch N -> freq = 5935 + N*20 for N=1 gives 5955 ✓
-#   ch5 -> 5935+100=6035 ✗ (actual 5975)
-#   OK the table shows N and freq explicitly. The pattern from the data:
-#   N:  1    5    9    13   17   21   25   29   33   37   41   45   49
-#   F:  5955 5975 5995 6015 6035 6055 6075 6095 6115 6135 6155 6175 6195
-#   Step in N = 4 for step in F = 20 MHz. So F = 5955 + ((N-1)/4)*20 for odd 20MHz channels.
-#   BUT ch 2 = 5935 exists separately (guard band channel).
-#   And ALL channels 1-233 exist at 20MHz spacing: N=1→5955, N=2→5935? No!
-#   Actually: per 802.11ax, 6GHz 20MHz channels are 1,5,9,...,233 (odd, step 4).
-#   Ch 2 (5935) is special/guard. The general formula for the 59 standard channels:
-#   F(N) = 5950 + N*20 ... ch1 = 5970 ✗
-#   F(N) = 5940 + N*20 ... ch1 = 5960 ✗
-#   From actual table: F(N) = 5950 + (N-1)*20/4 + 20 = wrong.
-#   Let me just look: ch1=5955, ch5=5975. delta_N=4, delta_F=20.
-#   F(N) = 5955 + (N-1)*20/4 = 5955 + (N-1)*5. ch5 = 5955+20 = 5975 ✓
-#   ch9 = 5955+40 = 5995 ✓ ch93 = 5955+92*5 = 6415 ✓
-#   BUT: ch2=5935 doesn't fit. The spec says the channel grid is 20MHz-spaced:
-#   ch2=5935, ch1=5955 are adjacent. So really F = 5955 + (N-1)*5 is the actual
-#   IEEE 802.11ax formula for ALL channels 1-233? ch233 = 5955+232*5 = 7115 ✓
-#   ch2 = 5955+5 = 5960 ✗ (actual 5935). So ch2 is truly special.
-#   The authoritative reference: for standard 20MHz channels, N increments by 4.
-#   F = 5955 + (N-1)*5 gives correct values for N=1,5,9,...233 (the standard set).
-#   Ch2 (5935) is the only special guard-band channel. We include it explicitly.
+# 6GHz band (802.11ax / WiFi 6E): standard 20MHz channels are numbered
+# 1, 5, 9, ..., 233 (step 4). Center frequency: F(N) = 5955 + (N-1) * 5 MHz,
+# e.g. ch1=5955, ch5=5975, ch33=6115, ch233=7115. Channel 2 (5935 MHz) is the
+# special UNII-5 guard-band channel and is included explicitly below.
 channelToFreq6GHz = {}
 for _ch6 in range(1, 234, 4):
     _freq6 = 5955 + ((_ch6 - 1) * 5)
@@ -564,28 +533,36 @@ class WirelessEngine(object):
             
         return macaddr
         
+    @staticmethod
     def getFrequencyForChannel(channelNumber, band=None):
         channelStr = str(channelNumber)
         if band == '6GHz' or (band is None and channelStr not in channelToFreq and channelStr in channelToFreq6GHz):
             if channelStr in channelToFreq6GHz:
                 return channelToFreq6GHz[channelStr]
+            if band == '6GHz':
+                # Explicit 6GHz request not in the 6GHz table (e.g. a
+                # 40/80/160MHz center-channel number): don't silently fall
+                # through to another band's channel of the same number.
+                return None
         if channelStr in channelToFreq:
             return channelToFreq[channelStr]
         return None
 
+    @staticmethod
     def getBandForFrequency(frequencyMHz):
         """Return '2.4GHz', '5GHz' or '6GHz' for a given frequency in MHz."""
         freq = int(frequencyMHz)
         if 2412 <= freq <= 2484:
             return '2.4GHz'
         elif 4915 <= freq <= 4980:
-            return '2.4GHz'
+            return '5GHz'  # 4.9GHz public safety band (ch 184-196): plots with 5GHz, as upstream always routed it
         elif 5080 <= freq <= 5865:
             return '5GHz'
         elif 5955 <= freq <= 7115:
             return '6GHz'
         return None
 
+    @staticmethod
     def getWifiGeneration(frequencyMHz, hasHE=False):
         """Human-readable WiFi generation from band + HE (802.11ax) capability."""
         band = WirelessEngine.getBandForFrequency(frequencyMHz) if frequencyMHz else None
@@ -1065,7 +1042,7 @@ if __name__ == '__main__':
         
     winterface = wirelessInterfaces[0]
     print('Scanning for wireless networks on ' + winterface + '...')
-    
+
     # Testing to/from Json
     # convert to Json
     retCode, errString, jsonstr=WirelessEngine.getNetworksAsJson(winterface, None)
