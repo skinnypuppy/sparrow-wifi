@@ -21,3 +21,5 @@ sparrow_elastic/data/fingerbank.db
 .playwright-mcp/
 *-layout.png
 page-*.yml
+# Downloaded at runtime by sparrow-wifi (OUI vendor database)
+manuf
