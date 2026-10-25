@@ -32,7 +32,9 @@ try:  # PyQt6 first
                              QKeySequence, QAction, QClipboard, QDesktopServices,
                              QValidator, QIntValidator, QDoubleValidator,
                              QPainter, QPdfWriter)
-    from PyQt6.QtGui import QRegularExpression
+    # QRegularExpression is QtCore in BOTH bindings - unlike QAction, it did
+    # not move in Qt6:
+    from PyQt6.QtCore import QRegularExpression
     from PyQt6.QtWidgets import (QApplication, QMainWindow,
                                  QFrame, QLabel, QPushButton, QCheckBox,
                                  QComboBox, QLineEdit, QMenu, QMenuBar,
@@ -71,7 +73,7 @@ except ImportError:
                              QPainter, QPdfWriter)
     # Names that live in different modules between Qt5 and Qt6:
     from PyQt5.QtWidgets import QAction            # QtGui.QAction in Qt6
-    from PyQt5.QtCore import QRegularExpression    # QtGui.QRegularExpression in Qt6
+    from PyQt5.QtCore import QRegularExpression    # QtCore in both bindings
     from PyQt5.QtWidgets import (QApplication, QMainWindow, QDesktopWidget,
                                  QFrame, QLabel, QPushButton, QCheckBox,
                                  QComboBox, QLineEdit, QMenu, QMenuBar,

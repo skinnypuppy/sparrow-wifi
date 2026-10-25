@@ -35,9 +35,12 @@ def check(name, cond, detail=''):
 import sparrowqt
 print('   QT_VERSION =', sparrowqt.QT_VERSION)
 check('sparrowqt shim imports cleanly', True)
-for n in ('QAction', 'QRegularExpression', 'QSortFilterProxyModel', 'QDesktopWidget',
+for n in ('QAction', 'QRegularExpression', 'QSortFilterProxyModel',
           'available_geometry', 'screen_center', 'Qt', 'QTimer', 'QSettings'):
     check('shim exports ' + n, hasattr(sparrowqt, n))
+# QDesktopWidget was removed in Qt6; the shim correctly only exports it on Qt5
+check('shim exports QDesktopWidget (Qt5-only class)',
+      hasattr(sparrowqt, 'QDesktopWidget') if sparrowqt.QT_VERSION == 5 else None)
 
 # ---- Chart backend / pyqtgraph emulation -------------------------------------
 try:
