@@ -22,12 +22,27 @@ if HAS_QTCHART:
         # Qt6 path
         from PyQt6.QtCharts import (QChart, QChartView, QLineSeries,
                                     QValueAxis, QSplineSeries)
+
+        class _Qt6ChartCompat(QChart):
+            """QChart with the Qt5-style axisX()/axisY() convenience accessors
+            that Qt 6 removed; the application code (and the pyqtgraph fallback
+            below) still uses them. Returns the first axis of the requested
+            orientation, or None if the chart has none - matching Qt5."""
+            def axisX(self):
+                axes = self.axes(Qt.Orientation.Horizontal)
+                return axes[0] if axes else None
+
+            def axisY(self):
+                axes = self.axes(Qt.Orientation.Vertical)
+                return axes[0] if axes else None
+
+        SparrowChart = _Qt6ChartCompat
     else:
         # Qt5 path
         from PyQt5.QtChart import (QChart, QChartView, QLineSeries,
                                    QValueAxis, QSplineSeries)
+        SparrowChart = QChart  # axisX()/axisY() are native in Qt5
 
-    SparrowChart = QChart
     SparrowChartView = QChartView
     SparrowLineSeries = QLineSeries
     SparrowValueAxis = QValueAxis

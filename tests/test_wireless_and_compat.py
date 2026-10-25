@@ -54,9 +54,32 @@ except ImportError as e:
 
 if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'qtchart':
     expected = 'PyQt5.QtChart' if sparrowqt.QT_VERSION == 5 else 'PyQt6.QtCharts'
+    origin = next((c.__module__ for c in sparrowchart.SparrowChart.__mro__
+                   if c.__module__ and c.__module__ != 'sparrowchart'), None)
     check('qtchart backend binding matches shim binding (QT_VERSION %d)' % sparrowqt.QT_VERSION,
-          sparrowchart.SparrowChart.__module__ == expected,
-          'SparrowChart came from %r' % sparrowchart.SparrowChart.__module__)
+          origin == expected, 'SparrowChart ultimately came from %r' % origin)
+    # Exercise the real-QtChart path headlessly; the axisX()/axisY()
+    # accessors were removed in Qt 6, so this replay of the GUI's exact
+    # chart-setup/styling chain is the regression guard for them.
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+    from sparrowqt import QApplication, QBrush, QColor
+    _app = QApplication.instance() or QApplication([])
+    _chart = sparrowchart.SparrowChart()
+    _axis = sparrowchart.SparrowValueAxis()
+    _chart.addAxis(_axis, sparrowqt.Qt.AlignmentFlag.AlignBottom)
+    check('real-chart axisX()/axisY() accessors (Qt6 removed them from QChart)',
+          _chart.axisX() is _axis and _chart.axisY() is None,
+          'axisX -> %r, axisY -> %r' % (_chart.axisX(), _chart.axisY()))
+    _chart.axisX().setLabelsColor(sparrowqt.Qt.white)
+    _chart.axisX().setTitleBrush(QBrush(QColor('white')))
+    _series = sparrowchart.SparrowLineSeries()
+    _chart.addSeries(_series)
+    _series.attachAxis(_chart.axisX())
+    _chart.setTitle('test')
+    _chart.legend()
+    _chart.createDefaultAxes()
+    _chart.removeAllSeries()
+    check('real-chart styling/attach/API-surface round-trip (the GUI crash chain)', True)
 
 if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'pyqtgraph':
     from sparrowqt import QPointF
