@@ -1080,8 +1080,7 @@ class AdvancedScanDialog(QDialog):
         outputFile.close()
         
     def saveFileDialog(self, fileSpec="CSV Files (*.csv);;All Files (*)"):    
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","",fileSpec, options=options)
         if fileName:
             return fileName

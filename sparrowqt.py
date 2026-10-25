@@ -143,6 +143,8 @@ if QT_VERSION == 6:
         'FillRule', 'KeyboardModifier', 'ImageConversionFlag'))
     _hoist_enum_members(QMessageBox, ('StandardButton',))
     _hoist_enum_members(QDialogButtonBox, ('StandardButton',))
+    _hoist_enum_members(QDialog, ('DialogCode',))
+    _hoist_enum_members(QPalette, ('ColorRole',))
     _hoist_enum_members(QHeaderView, ('ResizeMode',))
     _hoist_enum_members(QFileDialog, ('Option',))
     _hoist_enum_members(QLineEdit, ('EchoMode',))

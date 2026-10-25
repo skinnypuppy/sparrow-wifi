@@ -37,14 +37,25 @@ if HAS_QTCHART:
                 return axes[0] if axes else None
 
         SparrowChart = _Qt6ChartCompat
+
+        class _Qt6LineSeriesCompat(QLineSeries):
+            """QLineSeries with the Qt5-style pointsVector() accessor that
+            Qt 6 removed (QVector merged into QList in Qt6; points() is the
+            replacement and returns the same QPointF list). The append(x,y),
+            replace(index,x,y) and remove(index) overloads the application
+            uses were verified to still exist on the real Qt6 series."""
+            def pointsVector(self):
+                return self.points()
+
+        SparrowLineSeries = _Qt6LineSeriesCompat
     else:
         # Qt5 path
         from PyQt5.QtChart import (QChart, QChartView, QLineSeries,
                                    QValueAxis, QSplineSeries)
-        SparrowChart = QChart  # axisX()/axisY() are native in Qt5
+        SparrowChart = QChart            # axisX()/axisY() are native in Qt5
+        SparrowLineSeries = QLineSeries  # pointsVector() is native in Qt5
 
     SparrowChartView = QChartView
-    SparrowLineSeries = QLineSeries
     SparrowValueAxis = QValueAxis
     CHART_BACKEND = 'qtchart'
 

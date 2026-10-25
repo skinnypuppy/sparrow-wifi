@@ -3143,8 +3143,7 @@ class mainWindow(QMainWindow):
         
         
     def openFileDialog(self, fileSpec="CSV Files (*.csv);;All Files (*)"):    
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "",fileSpec, options=options)
         if fileName:
             return fileName
@@ -3152,8 +3151,7 @@ class mainWindow(QMainWindow):
             return None
  
     def saveFileDialog(self, fileSpec="CSV Files (*.csv);;All Files (*)"):    
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","",fileSpec, options=options)
         if fileName:
             return fileName

@@ -358,8 +358,7 @@ class TelemetryDialog(QDialog):
         outputFile.close()
         
     def saveFileDialog(self):    
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","CSV Files (*.csv);;All Files (*)", options=options)
         if fileName:
             return fileName

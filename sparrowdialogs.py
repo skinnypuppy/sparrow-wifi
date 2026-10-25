@@ -45,8 +45,7 @@ from wirelessengine import WirelessEngine
 
 # ------------------  Global File Dialogs ------------------------------
 def openFileDialog(fileSpec="CSV Files (*.csv);;All Files (*)"):
-    options = QFileDialog.Options()
-    options |= QFileDialog.DontUseNativeDialog
+    options = QFileDialog.DontUseNativeDialog
     fileName, _ = QFileDialog.getOpenFileName(None,"QFileDialog.getOpenFileName()", "",fileSpec, options=options)
     if fileName:
         return fileName
@@ -55,8 +54,7 @@ def openFileDialog(fileSpec="CSV Files (*.csv);;All Files (*)"):
 
 
 def saveFileDialog(fileSpec="CSV Files (*.csv);;All Files (*)"):
-    options = QFileDialog.Options()
-    options |= QFileDialog.DontUseNativeDialog
+    options = QFileDialog.DontUseNativeDialog
     fileName, _ = QFileDialog.getSaveFileName(None,"QFileDialog.getSaveFileName()","",fileSpec, options=options)
     if fileName:
         return fileName
@@ -417,8 +415,7 @@ class DBSettingsDialog(QDialog):
             self.setPostgresVisible(True)
 
     def saveFileDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","SQLite3 Files (*.sqlite3);;All Files (*)", options=options)
         if fileName:
             return fileName
@@ -524,8 +521,7 @@ class MapSettingsDialog(QDialog):
             self.fileinput.setText(fileName)
 
     def saveFileDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","HTML Files (*.html);;All Files (*)", options=options)
         if fileName:
             return fileName
@@ -663,8 +659,7 @@ class TelemetryMapSettingsDialog(MapSettingsDialog):
         super().done(result)
 
     def openFileDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
+        options = QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","CSV Files (*.csv);;All Files (*)", options=options)
         if fileName:
             return fileName

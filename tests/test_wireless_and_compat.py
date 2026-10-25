@@ -41,6 +41,26 @@ for n in ('QAction', 'QRegularExpression', 'QSortFilterProxyModel',
 # QDesktopWidget was removed in Qt6; the shim correctly only exports it on Qt5
 check('shim exports QDesktopWidget (Qt5-only class)',
       hasattr(sparrowqt, 'QDesktopWidget') if sparrowqt.QT_VERSION == 5 else None)
+from sparrowqt import QFileDialog
+check('shim exports QFileDialog.DontUseNativeDialog (hoisted Option enum member)',
+      hasattr(QFileDialog, 'DontUseNativeDialog'))
+from sparrowqt import QDialog, QPalette, QTimer, QApplication
+check('shim exports QDialog.Accepted/Rejected (hoisted DialogCode enum)',
+      hasattr(QDialog, 'Accepted') and hasattr(QDialog, 'Rejected'))
+check('shim exports QPalette.Base/Text (hoisted ColorRole enum)',
+      hasattr(QPalette, 'Base') and hasattr(QPalette, 'Text'))
+if hasattr(QDialog, 'Accepted'):
+    # Replay the app's exact pattern: exec() result compared against the
+    # hoisted QDialog.Accepted. Empirically verified that PyQt6 exec()
+    # returns int and that int == DialogCode.Accepted holds on sip enums.
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+    _app2 = QApplication.instance() or QApplication([])
+    _dlg = QDialog()
+    QTimer.singleShot(50, lambda: _dlg.done(1))
+    _res = _dlg.exec()
+    check('dialog exec() == QDialog.Accepted (the 9 getSettings sites)',
+          _res == QDialog.Accepted,
+          'exec returned %r, Accepted is %r' % (_res, QDialog.Accepted))
 
 # ---- Chart backend / pyqtgraph emulation -------------------------------------
 try:
@@ -80,6 +100,18 @@ if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'qtchart':
     _chart.createDefaultAxes()
     _chart.removeAllSeries()
     check('real-chart styling/attach/API-surface round-trip (the GUI crash chain)', True)
+    _ts = sparrowchart.SparrowLineSeries()
+    _ts.clear()
+    _ts.append(0, -50)
+    _ts.append(1, -60)
+    check('real-series pointsVector() (removed in Qt6, restored by the compat subclass)',
+          len(_ts.pointsVector()) == 2 and _ts.pointsVector()[1].y() == -60,
+          'pointsVector y-values -> %r' % [p.y() for p in _ts.pointsVector()])
+    _ts.remove(0)
+    _ts.replace(0, 5, -70)
+    check('real-series rolling time-series ops (telemetry chain: remove(0)/replace(i,x,y))',
+          _ts.count() == 1 and _ts.at(0).x() == 5 and _ts.at(0).y() == -70,
+          'count/at -> %r / %r' % (_ts.count(), (_ts.at(0).x(), _ts.at(0).y()) if _ts.count() else None))
 
 if sparrowchart is not None and sparrowchart.CHART_BACKEND == 'pyqtgraph':
     from sparrowqt import QPointF
