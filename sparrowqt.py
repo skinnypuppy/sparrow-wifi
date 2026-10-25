@@ -17,8 +17,6 @@ This module exposes a flat namespace that the rest of the codebase imports
 from, so individual files never need to know which Qt is underneath.
 """
 
-import sys
-
 QT_VERSION = None
 
 # --- Core widget imports -----------------------------------------------------
@@ -34,7 +32,7 @@ try:  # PyQt6 first
                              QKeySequence, QAction, QClipboard, QDesktopServices,
                              QValidator, QIntValidator, QDoubleValidator,
                              QPainter, QPdfWriter)
-    from PyQt6.QtCore import QRegularExpression
+    from PyQt6.QtGui import QRegularExpression
     from PyQt6.QtWidgets import (QApplication, QMainWindow,
                                  QFrame, QLabel, QPushButton, QCheckBox,
                                  QComboBox, QLineEdit, QMenu, QMenuBar,
@@ -67,10 +65,13 @@ except ImportError:
                               QSysInfo, QLibraryInfo, QMetaObject, QDir)
     from PyQt5.QtGui import (QIcon, QPixmap, QColor, QBrush, QPen, QPalette, QRegion,
                              QFont, QFontMetrics, QCursor, QCloseEvent,
-                             QKeySequence, QAction, QClipboard,
+                             QKeySequence, QClipboard,
                              QDesktopServices, QValidator, QIntValidator,
-                             QDoubleValidator, QRegularExpression,
+                             QDoubleValidator,
                              QPainter, QPdfWriter)
+    # Names that live in different modules between Qt5 and Qt6:
+    from PyQt5.QtWidgets import QAction            # QtGui.QAction in Qt6
+    from PyQt5.QtCore import QRegularExpression    # QtGui.QRegularExpression in Qt6
     from PyQt5.QtWidgets import (QApplication, QMainWindow, QDesktopWidget,
                                  QFrame, QLabel, QPushButton, QCheckBox,
                                  QComboBox, QLineEdit, QMenu, QMenuBar,
@@ -89,8 +90,9 @@ except ImportError:
                                  QSpacerItem, QRadioButton, QButtonGroup,
                                  QSlider, QDial, QScrollBar, QStyle,
                                  QStyleOptionViewItem, QStyledItemDelegate,
-                                 QItemDelegate, QSortFilterProxyModel,
+                                 QItemDelegate,
                                  QDialog, QDialogButtonBox)
+    from PyQt5.QtCore import QSortFilterProxyModel  # QtCore in both bindings
     from PyQt5.QtNetwork import (QUdpSocket, QTcpServer, QTcpSocket,
                                  QHostAddress, QNetworkInterface)
     QT_VERSION = 5
@@ -221,88 +223,3 @@ def screen_center(widget):
         center = QDesktopWidget().availableGeometry().center()
         geo.moveCenter(center)
         widget.move(geo.topLeft())
-
-
-# --- 6GHz band definitions ----------------------------------------------------
-# Channel numbers in 6GHz restart at 1, colliding with 2.4GHz channels 1-14.
-# All lookups therefore need a band qualifier. 'auto' resolves by frequency
-# range, which is how iw reports scan results anyway.
-
-BAND_24GHZ = '2.4GHz'
-BAND_5GHZ = '5GHz'
-BAND_6GHZ = '6GHz'
-
-# (channel, freq_MHz) for 6GHz - 20MHz channels numbered 1-233 stepping by 4,
-# plus special guard-band ch2. F = 5955 + (N-1)*5 for the standard set.
-SIX_GHZ_CHANNELS = {2: 5935}  # guard band channel
-for _ch in range(1, 234, 4):
-    SIX_GHZ_CHANNELS[_ch] = 5955 + ((_ch - 1) * 5)
-
-
-def resolve_frequency(channel, band=None):
-    """Resolve a channel number to frequency in MHz.
-
-    Args:
-        channel: integer channel number (1-233)
-        band: '2.4GHz', '5GHz', '6GHz', or None for auto.
-
-    Returns:
-        Frequency in MHz (int), or None if unresolvable.
-
-    When band is None, ambiguity exists for channels 1-14 (2.4 vs 6GHz).
-    For those, 2.4GHz wins unless band='6GHz' is explicit.
-    """
-    ch = int(channel)
-    if band == BAND_6GHZ:
-        return SIX_GHZ_CHANNELS.get(ch)
-    if band == BAND_5GHZ:
-        from wirelessengine import channelToFreq
-        return int(channelToFreq[str(ch)]) if str(ch) in channelToFreq else None
-    if band == BAND_24GHZ or ch <= 14:
-        from wirelessengine import channelToFreq
-        if str(ch) in channelToFreq and int(channelToFreq[str(ch)]) < 5000:
-            return int(channelToFreq[str(ch)])
-    # fall through: maybe a 5GHz channel
-    from wirelessengine import channelToFreq
-    if str(ch) in channelToFreq:
-        return int(channelToFreq[str(ch)])
-    # or a 6GHz channel >= 15
-    if ch >= 15:
-        return SIX_GHZ_CHANNELS.get(ch)
-    return None
-
-
-def resolve_band(frequency_mhz):
-    """Determine which band a frequency belongs to."""
-    f = int(frequency_mhz)
-    if 2412 <= f <= 2484:
-        return BAND_24GHZ
-    if 4915 <= f <= 4980:
-        return BAND_24GHZ  # legacy 4.9GHz treated as 5GHz-adjacent
-    if 5080 <= f <= 5865:
-        return BAND_5GHZ
-    if 5955 <= f <= 7115:
-        return BAND_6GHZ
-    return None
-
-
-def wifi_generation(frequency_mhz, has_he=False):
-    """Human-readable WiFi generation for a network.
-
-    Args:
-        frequency_mhz: center frequency
-        has_he: True if HE (High Efficiency / 802.11ax) IEs were seen.
-    """
-    band = resolve_band(frequency_mhz)
-    if has_he:
-        if band == BAND_6GHZ:
-            return 'WiFi 6E'
-        return 'WiFi 6'
-    if band == BAND_6GHZ:
-        return 'WiFi 6E'
-    # without HE we can't be sure of ax; report band
-    if band == BAND_24GHZ:
-        return '2.4GHz'
-    if band == BAND_5GHZ:
-        return '5GHz'
-    return 'Unknown'

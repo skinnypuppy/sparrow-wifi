@@ -2977,7 +2977,7 @@ class mainWindow(QMainWindow):
                 netBand = WirelessEngine.getBandForFrequency(curNet.frequency)
             if netBand is None:
                 netBand = '2.4GHz' if (curNet.channel is not None and curNet.channel < 15) else '5GHz'
-            
+
             newSeries = None
             if netBand == '2.4GHz':
                 newSeries = self.createNewSeries(nextColor, self.chart24)

@@ -19,7 +19,7 @@
 #
 
 from sparrowqt import QDialog, QDialogButtonBox, QApplication, QLabel, QComboBox, QLineEdit, QPushButton, QAbstractItemView, QSpinBox
-from sparrowqt import QFileDialog, QSpinBox, QMessageBox, QTableWidget, QHeaderView, QTableWidgetItem, QMenu, QAction, QDialogButtonBox
+from sparrowqt import QFileDialog, QMessageBox, QTableWidget, QHeaderView, QTableWidgetItem, QMenu, QAction
 from sparrowtablewidgets import DateTableWidgetItem, FloatTableWidgetItem, IntTableWidgetItem
 from sparrowqt import Qt, QTimer
 from sparrowqt import QtCore, available_geometry, screen_center

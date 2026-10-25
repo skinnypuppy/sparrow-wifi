@@ -243,7 +243,6 @@ elif HAS_PYQTGRAPH:
         def mapToPosition(self, value, series=None):
             # Used by Callout for hover text; approximate mapping
             if self._plotWidget:
-                vb = self._plotWidget.getViewBox()
                 if hasattr(value, 'x') and hasattr(value, 'y'):
                     return QPointF(value.x(), value.y())
             return QPointF(0, 0)
@@ -285,7 +284,7 @@ elif HAS_PYQTGRAPH:
                         try:
                             c = series._pen.color()
                             pen = pg.mkPen(c.name(), width=1)
-                        except:
+                        except Exception:
                             pass
                     item = self._plotWidget.plot(
                         [], [], pen=pen, name=series._name or ''

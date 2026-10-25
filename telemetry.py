@@ -19,13 +19,12 @@
 # 
 
 from sparrowqt import QDialog, QApplication
-from sparrowqt import QTableWidget, QHeaderView,QTableWidgetItem, QMessageBox, QFileDialog, QMenu, QAction
+from sparrowqt import QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QFileDialog, QMenu, QAction
 # from sparrowqt import QLabel, QComboBox, QLineEdit, QPushButton, QFileDialog
-#from sparrowqt import Qt
+# from sparrowqt import Qt
 from sparrowqt import QtWidgets
 from sparrowqt import QtCore, available_geometry, screen_center
 from sparrowqt import Qt
-from sparrowchart import CHART_BACKEND
 from sparrowchart import SparrowChart as QChart, SparrowChartView as QChartView, SparrowLineSeries as QLineSeries, SparrowValueAxis as QValueAxis
 from sparrowqt import QPen, QFont, QBrush, QColor, QPainter
 from sparrowqt import QPushButton
@@ -744,4 +743,3 @@ if __name__ == '__main__':
     dialog.updateData(50)
     #print("{} {} {}".format(date, time, ok))
     app.exec()
-
