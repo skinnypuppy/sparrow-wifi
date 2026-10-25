@@ -130,10 +130,15 @@ for _ch6, _freq6 in channelToFreq6GHz.items():
 # None means not yet determined. Set on first call to getInterfaces().
 interfaceApp = None
 
+# iw (nl80211) MUST be preferred over iwconfig (wext): modern drivers
+# (mt7925u WiFi 7, ath12k, rtw89, ...) no longer register wext handlers,
+# so iwconfig reports those interfaces on STDERR as "no wireless extensions"
+# and they are silently lost when stderr is discarded. 'iw' sees every
+# nl80211 interface regardless of wext support.
 _INTERFACE_APPS = [
     # (executable, full command, regex to extract interface names)
+    ('iw',       ['iw', 'dev'],                                              r'Interface (w[\w-]+)'),
     ('iwconfig', ['iwconfig'],                                               r'^(w.*?) .*'),
-    ('iw',       ['iw', 'dev'],                                              r'Interface (w[a-z0-9]+)'),
     ('nmcli',    ['nmcli', '--colors', 'no', '--terse', 'device', 'status'], r'^(w[a-z0-9]+):wifi:'),
 ]
 
@@ -145,20 +150,21 @@ def _findInterfaceApp():
     return None
 
 
-# Cached iwconfig-vs-iw selection for callsites that cannot use nmcli
-# (monitor-mode enumeration, channel set). iwconfig is preferred when present
-# for behavioral parity with older releases; iw is the fallback on systems
-# where iwconfig has been removed (Ubuntu 25.04+, etc).
+# Cached iw-vs-iwconfig selection for callsites that cannot use nmcli
+# (monitor-mode enumeration, channel set). iw is preferred: iwconfig (wext)
+# cannot see interfaces from wext-less drivers (e.g. mt7925u WiFi 7), and it
+# has been removed from newer distros (Ubuntu 25.04+). iwconfig is kept only
+# as a legacy fallback.
 _iwTool = None
 
 def findIwTool():
-    """Return 'iwconfig' if available, else 'iw' if available, else None."""
+    """Return 'iw' if available, else 'iwconfig' if available, else None."""
     global _iwTool
     if _iwTool is None:
-        if shutil.which('iwconfig'):
-            _iwTool = 'iwconfig'
-        elif shutil.which('iw'):
+        if shutil.which('iw'):
             _iwTool = 'iw'
+        elif shutil.which('iwconfig'):
+            _iwTool = 'iwconfig'
     return _iwTool
 
 # ------------------  WirelessNetwork class ------------------------------------
